@@ -1,9 +1,8 @@
 import torch
 from torch import nn
 
-
 class UnetModel(nn.Module):
-
+    
     def __init__(self, ngf=64, input_nc=1, output_nc=2):
         super(UnetModel, self).__init__()
 
@@ -31,14 +30,15 @@ class UnetModel(nn.Module):
         audio_conv5feature = self.audionet_convlayer5(audio_conv4feature)
         audio_conv6feature = self.audionet_convlayer6(audio_conv5feature)
         audio_conv7feature = self.audionet_convlayer7(audio_conv6feature)
-        audio_upconv1feature = self.audionet_upconvlayer1(audio_conv7feature)
-        audio_upconv2feature = self.audionet_upconvlayer2(torch.cat((audio_upconv1feature, audio_conv6feature), dim=1))
-        audio_upconv3feature = self.audionet_upconvlayer3(torch.cat((audio_upconv2feature, audio_conv5feature), dim=1))
-        audio_upconv4feature = self.audionet_upconvlayer4(torch.cat((audio_upconv3feature, audio_conv4feature), dim=1))
-        audio_upconv5feature = self.audionet_upconvlayer5(torch.cat((audio_upconv4feature, audio_conv3feature), dim=1))
-        audio_upconv6feature = self.audionet_upconvlayer6(torch.cat((audio_upconv5feature, audio_conv2feature), dim=1))
-        mask_prediction = self.audionet_upconvlayer7(torch.cat((audio_upconv6feature, audio_conv1feature), dim=1))
-        return mask_prediction
+        #audio_upconv1feature = self.audionet_upconvlayer1(audio_conv7feature)
+        #audio_upconv2feature = self.audionet_upconvlayer2(torch.cat((audio_upconv1feature, audio_conv6feature), dim=1))
+        #audio_upconv3feature = self.audionet_upconvlayer3(torch.cat((audio_upconv2feature, audio_conv5feature), dim=1))
+        #audio_upconv4feature = self.audionet_upconvlayer4(torch.cat((audio_upconv3feature, audio_conv4feature), dim=1))
+        #audio_upconv5feature = self.audionet_upconvlayer5(torch.cat((audio_upconv4feature, audio_conv3feature), dim=1))
+        #audio_upconv6feature = self.audionet_upconvlayer6(torch.cat((audio_upconv5feature, audio_conv2feature), dim=1))
+        #mask_prediction = self.audionet_upconvlayer7(torch.cat((audio_upconv6feature, audio_conv1feature), dim=1))
+        #return mask_prediction
+        return audio_conv7feature
 
     @staticmethod
     def unet_conv(input_nc, output_nc, norm_layer=nn.BatchNorm2d):
