@@ -2,8 +2,24 @@ import torch
 from torch import nn
 
 class UnetModel(nn.Module):
+    """
+    U-Net model for audio source separation.
+    
+    Args:
+        ngf (int, optional): Number of generator filters. Default is 64.
+        input_nc (int, optional): Number of input channels. Default is 1.
+        output_nc (int, optional): Number of output channels. Default is 2.
+    """
     
     def __init__(self, ngf=64, input_nc=1, output_nc=2):
+        """
+        Initializes the UnetModel object.
+
+        Args:
+            ngf (int, optional): Number of generator filters. Default is 64.
+            input_nc (int, optional): Number of input channels. Default is 1.
+            output_nc (int, optional): Number of output channels. Default is 2.
+        """
         super(UnetModel, self).__init__()
 
         # initialize layers
@@ -23,6 +39,15 @@ class UnetModel(nn.Module):
         self.upconvlayer7 = self.unet_upconv(ngf * 2, output_nc, True)
 
     def forward(self, x):
+        """
+        Forward pass of the U-Net model.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor.
+        """
         audio_conv1feature = self.audionet_convlayer1(x)
         audio_conv2feature = self.audionet_convlayer2(audio_conv1feature)
         audio_conv3feature = self.audionet_convlayer3(audio_conv2feature)
@@ -42,6 +67,18 @@ class UnetModel(nn.Module):
 
     @staticmethod
     def unet_conv(input_nc, output_nc, norm_layer=nn.BatchNorm2d):
+        """
+        Defines a convolutional layer for the U-Net model.
+
+        Args:
+            input_nc (int): Number of input channels.
+            output_nc (int): Number of output channels.
+            norm_layer (torch.nn.Module, optional): Normalization layer. Default is nn.BatchNorm2d.
+
+        Returns:
+            torch.nn.Sequential: Convolutional layer.
+        """
+        downconv
         downconv = nn.Conv2d(input_nc, output_nc, kernel_size=4, stride=2, padding=1)
         downrelu = nn.LeakyReLU(0.2, True)
         downnorm = norm_layer(output_nc)
@@ -49,6 +86,18 @@ class UnetModel(nn.Module):
 
     @staticmethod
     def unet_upconv(input_nc, output_nc, outermost=False, norm_layer=nn.BatchNorm2d):
+        """
+        Defines a transpose convolutional layer for the U-Net model.
+
+        Args:
+            input_nc (int): Number of input channels.
+            output_nc (int): Number of output channels.
+            outermost (bool, optional): If True, the output is followed by a sigmoid activation.
+            norm_layer (torch.nn.Module, optional): Normalization layer. Default is nn.BatchNorm2d.
+
+        Returns:
+            torch.nn.Sequential: Transpose convolutional layer.
+        """
         upconv = nn.ConvTranspose2d(input_nc, output_nc, kernel_size=4, stride=2, padding=1)
         uprelu = nn.ReLU(True)
         upnorm = norm_layer(output_nc)
@@ -58,6 +107,13 @@ class UnetModel(nn.Module):
             return nn.Sequential(*[upconv, nn.Sigmoid()])
 
     def transfer_weights(self, weight_path, device):
+        """
+        Transfer pre-trained weights to the U-Net model.
+
+        Args:
+            weight_path (str): Path to the pre-trained weight file.
+            device (torch.device): Device to which the weights should be transferred.
+        """
         print('Loading weights for UNet')
         trained_model_state_dict = torch.load(weight_path, map_location=device)
         trained_trim = {k: v for k, v in trained_model_state_dict.items() if not k.startswith('audionet_upconvlayer')}
