@@ -126,10 +126,16 @@ class UNETTrainer:
         return self.model, train_loss_batches, train_acc_batches
 
     def output_to_label(z: torch.tensor):
-        """Create the binary mask of the prediction"""
+        """
+        Args:
+            z (torch.tensor): ouput of the network
+        Returns:
+            The binary mask of the prediction
+        """
         return torch.where(z > 0.5, 1, 0, dtype=torch.int)
 
     def validate(self, device):
+
         val_loss_cum = 0
         val_acc_cum = 0
         self.model.eval()
