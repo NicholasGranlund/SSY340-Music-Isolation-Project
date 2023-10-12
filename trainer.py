@@ -45,7 +45,7 @@ class UNETTrainer:
         self.val_dataloader = val_dataloader
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
-        self.loss_function = nn.BCELoss()
+        self.loss_function = nn.MSELoss()
 
     def train_model(self, num_epochs: int = 1):
         """

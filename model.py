@@ -37,12 +37,11 @@ class UnetModel(nn.Module):
         self.upconvlayer4 = self.unet_upconv(ngf * 16, ngf * 4)
         self.upconvlayer5 = self.unet_upconv(ngf * 8, ngf * 2)
         self.upconvlayer6 = self.unet_upconv(ngf * 4, ngf)
-        self.upconvlayer7 = self.unet_upconv(ngf * 2, nc, True)
+        self.upconvlayer7 = self.unet_upconv(ngf * 2, nc, True, mode='regression')
 
     def forward(self, x):
         """
         Forward pass of the U-Net model.
-
         Args:
             x (torch.Tensor): Input tensor.
 
@@ -84,7 +83,7 @@ class UnetModel(nn.Module):
         return nn.Sequential(*[downconv, downnorm, downrelu])
 
     @staticmethod
-    def unet_upconv(input_nc, output_nc, outermost=False, norm_layer=nn.BatchNorm2d):
+    def unet_upconv(input_nc, output_nc, outermost=False, norm_layer=nn.BatchNorm2d, mode='classification'):
         """
         Defines a transpose convolutional layer for the U-Net model.
 
@@ -101,7 +100,10 @@ class UnetModel(nn.Module):
         uprelu = nn.ReLU(True)
         upnorm = norm_layer(output_nc)
         if not outermost:
-            return nn.Sequential(*[upconv, upnorm, uprelu])
+            if mode == 'classification':
+                return nn.Sequential(*[upconv, upnorm, uprelu])
+            else:
+                return nn.Sequential(*[upconv, uprelu])
         else:
             return nn.Sequential(*[upconv, nn.Sigmoid()])
 
