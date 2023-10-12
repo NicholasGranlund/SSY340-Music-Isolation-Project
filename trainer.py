@@ -71,17 +71,17 @@ class UNETTrainer:
         os.makedirs(training_folder, exist_ok=True)
 
         for epoch in range(1, num_epochs + 1):
-            model, train_loss, train_acc = self._train_epoch(device, print_every=None)
+            model, train_loss_batches, train_acc_batches = self._train_epoch(device, print_every=None)
             val_loss, val_acc = self.validate(device)
             print(
                 f"Epoch {epoch}/{num_epochs}: "
-                f"Train loss: {sum(train_loss) / len(train_loss):.3f}, "
-                f"Train acc.: {sum(train_acc) / len(train_acc):.3f}, "
+                f"Train loss: {sum(train_loss_batches) / len(train_loss_batches):.3f}, "
+                f"Train acc.: {sum(train_acc_batches) / len(train_acc_batches):.3f}, "
                 f"Val. loss: {val_loss:.3f}, "
                 f"Val. acc.: {val_acc:.3f}"
             )
-            train_losses.extend(train_loss)
-            train_accs.extend(train_acc)
+            train_losses.append(sum(train_loss_batches) / len(train_loss_batches))
+            train_accs.append(sum(train_acc_batches) / len(train_acc_batches))
             val_losses.append(val_loss)
             val_accs.append(val_acc)
             torch.save({'model_state_dict': self.model.state_dict(),

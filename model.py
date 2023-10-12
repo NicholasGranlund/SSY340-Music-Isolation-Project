@@ -56,13 +56,13 @@ class UnetModel(nn.Module):
         audio_conv5feature = self.audionet_convlayer5(audio_conv4feature)
         audio_conv6feature = self.audionet_convlayer6(audio_conv5feature)
         audio_conv7feature = self.audionet_convlayer7(audio_conv6feature)
-        audio_upconv1feature = self.upconvlayer1(audio_conv7feature)
-        audio_upconv2feature = self.upconvlayer2(torch.cat((audio_upconv1feature, audio_conv6feature), dim=1))
-        audio_upconv3feature = self.upconvlayer3(torch.cat((audio_upconv2feature, audio_conv5feature), dim=1))
-        audio_upconv4feature = self.upconvlayer4(torch.cat((audio_upconv3feature, audio_conv4feature), dim=1))
-        audio_upconv5feature = self.upconvlayer5(torch.cat((audio_upconv4feature, audio_conv3feature), dim=1))
-        audio_upconv6feature = self.upconvlayer6(torch.cat((audio_upconv5feature, audio_conv2feature), dim=1))
-        mask_prediction = self.upconvlayer7(torch.cat((audio_upconv6feature, audio_conv1feature), dim=1))
+        audio_upconvfeature = self.upconvlayer1(audio_conv7feature)
+        audio_upconvfeature = self.upconvlayer2(torch.cat((audio_upconvfeature, audio_conv6feature), dim=1))
+        audio_upconvfeature = self.upconvlayer3(torch.cat((audio_upconvfeature, audio_conv5feature), dim=1))
+        audio_upconvfeature = self.upconvlayer4(torch.cat((audio_upconvfeature, audio_conv4feature), dim=1))
+        audio_upconvfeature = self.upconvlayer5(torch.cat((audio_upconvfeature, audio_conv3feature), dim=1))
+        audio_upconvfeature = self.upconvlayer6(torch.cat((audio_upconvfeature, audio_conv2feature), dim=1))
+        mask_prediction = self.upconvlayer7(torch.cat((audio_upconvfeature, audio_conv1feature), dim=1))
         return mask_prediction
 
     @staticmethod
@@ -137,8 +137,3 @@ class UnetModel(nn.Module):
         for name, param in self.named_parameters():
             if name.startswith('audionet_convlayer'):
                 param.requires_grad = False
-
-
-if __name__ == '__main__':
-    model = UnetModel()
-    model.freeze_encoder_weights()
