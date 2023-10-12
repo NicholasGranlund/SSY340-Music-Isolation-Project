@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+
 class UnetModel(nn.Module):
     """
     U-Net model for audio source separation.
@@ -11,14 +12,14 @@ class UnetModel(nn.Module):
         output_nc (int, optional): Number of output channels. Default is 2.
     """
 
-    def __init__(self, ngf=64, input_nc=1, output_nc=2):
+    def __init__(self, ngf=64, nc=1):
         """
         Initializes the UnetModel object.
 
         Args:
             ngf (int, optional): Number of generator filters. Default is 64.
-            input_nc (int, optional): Number of input channels. Default is 1.
-            output_nc (int, optional): Number of output channels. Default is 2.
+            nc (int, optional): Number of channels. Default is 1.
+
         """
         super(UnetModel, self).__init__()
 
@@ -117,3 +118,12 @@ class UnetModel(nn.Module):
         trained_trim = {k: v for k, v in trained_model_state_dict.items() if not k.startswith('audionet_upconvlayer')}
         self.load_state_dict(trained_trim, strict=False)
 
+    def freeze_encoder_weights(self):
+        for name, param in self.named_parameters():
+            if name.startswith('audionet_convlayer'):
+                param.requires_grad = False
+
+
+if __name__ == '__main__':
+    model = UnetModel()
+    model.freeze_encoder_weights()
