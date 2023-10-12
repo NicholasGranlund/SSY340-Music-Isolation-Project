@@ -4,7 +4,7 @@ import datetime as dt
 import os
 
 
-class UNETTrainer:
+class UnetTrainer:
     """
     Trainer class for training a UNet model using PyTorch.
 
@@ -30,8 +30,7 @@ class UNETTrainer:
         trained_model, train_losses, train_accs, val_losses, val_accs = trainer.train_model()
     """
 
-    def __init__(self, model: nn.Module, train_dataloader: torch.utils.data.DataLoader,
-                 val_dataloader: torch.utils.data.DataLoader):
+    def __init__(self, model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: torch.utils.data.DataLoader):
         """
         Initializes the UNETTrainer object.
 
@@ -43,9 +42,10 @@ class UNETTrainer:
         self.model = model
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
-
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         self.loss_function = nn.MSELoss()
+        self.epoch_losses = []
+
 
     def train_model(self, num_epochs: int = 1):
         """
@@ -70,69 +70,57 @@ class UNETTrainer:
         training_folder = f'training_model/{training_id}'
         os.makedirs(training_folder, exist_ok=True)
 
+        # Iterate through the epochs
         for epoch in range(1, num_epochs + 1):
-            model, train_loss_batches, train_acc_batches = self._train_epoch(device, print_every=None)
-            val_loss, val_acc = self.validate(device)
-            print(
-                f"Epoch {epoch}/{num_epochs}: "
-                f"Train loss: {sum(train_loss_batches) / len(train_loss_batches):.3f}, "
-                f"Train acc.: {sum(train_acc_batches) / len(train_acc_batches):.3f}, "
-                f"Val. loss: {val_loss:.3f}, "
-                f"Val. acc.: {val_acc:.3f}"
-            )
-            train_losses.append(sum(train_loss_batches) / len(train_loss_batches))
-            train_accs.append(sum(train_acc_batches) / len(train_acc_batches))
-            val_losses.append(val_loss)
-            val_accs.append(val_acc)
-            torch.save({'model_state_dict': self.model.state_dict(),
-                        'train_losses': train_losses,
-                        'train_accs': train_accs,
-                        'val_losses': val_losses,
-                        'val_accs': val_accs,
-                        }, os.path.join(training_folder, f'epoch_{epoch}.ckpt'))
+
+            # Train one epoch
+            improved_model, train_loss_batches = self._train_epoch(device, print_every=None)
+
+            # Save model
+            self.model = improved_model
+
+            # Save losses
+            self.epoch_losses.append(sum(train_loss_batches)/len(train_loss_batches))
+            print(f'Epoch number {epoch} complete: Average loss: {self.epoch_losses[-1]}')
+
 
         return self.model, train_losses, train_accs, val_losses, val_accs
 
+
     def _train_epoch(self, device, print_every):
-        # Train:
+        
+        # Set the model in train mode
         self.model.train()
+
+        # Initialize empy lists for losses
         train_loss_batches, train_acc_batches = [], []
+
+        # Get number of batches 
         num_batches = len(self.train_dataloader)
+
+        # Iterate thought the batches
         for batch_index, (x, y) in enumerate(self.train_dataloader, 1):
-            inputs, labels = x.to(device), y.to(device)
+            print(f"\tBatch {batch_index}/{num_batches}: ")
+
+            # Send tensors to device
+            inputs_spectrogram, outputs_mask = x.to(device), y.to(device)
             self.optimizer.zero_grad()
-            z = self.model.forward(inputs)
-            loss = self.loss_function(z, labels.float())
+
+            # Forward prop, get mask prediction
+            mask_prediction = self.model.forward(inputs_spectrogram)
+ 
+            # Compute the loss
+            loss = self.loss_function(mask_prediction, outputs_mask)
+
+            # Back propagate
             loss.backward()
             self.optimizer.step()
+
+            # Append the loss in the list
             train_loss_batches.append(loss.item())
+            print(f'Loss: {loss.item()}')
 
-            hard_preds = self.output_to_label(z)
-            acc_batch_avg = (hard_preds == labels).float().mean().item()
-            train_acc_batches.append(acc_batch_avg)
-
-            # If you want to print your progress more often than every epoch you can
-            # set `print_every` to the number of batches you want between every status update.
-            # Note that the print out will trigger a full validation on the full val. set => slows down training
-            if print_every is not None and batch_index % print_every == 0:
-                val_loss, val_acc = self.validate(device)
-                self.model.train()
-                print(f"\tBatch {batch_index}/{num_batches}: "
-                      f"\tTrain loss: {sum(train_loss_batches[-print_every:]) / print_every:.3f}, "
-                      f"\tTrain acc.: {sum(train_acc_batches[-print_every:]) / print_every:.3f}, "
-                      f"\tVal. loss: {val_loss:.3f}, "
-                      f"\tVal. acc.: {val_acc:.3f}")
-
-        return self.model, train_loss_batches, train_acc_batches
-
-    def output_to_label(z: torch.tensor):
-        """
-        Args:
-            z (torch.tensor): ouput of the network
-        Returns:
-            The binary mask of the prediction
-        """
-        return torch.where(z > 0.5, 1, 0, dtype=torch.int)
+        return self.model, train_loss_batches
 
     def validate(self, device):
 
