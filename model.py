@@ -119,6 +119,21 @@ class UnetModel(nn.Module):
         self.load_state_dict(trained_trim, strict=False)
 
     def freeze_encoder_weights(self):
+        """
+        Freezes the weights of the encoder layers in the UNetModel.
+
+        This method sets the `requires_grad` attribute of the parameters in the
+        encoder layers (audionet_convlayer*) to False, effectively freezing their weights
+        during the training process. This is useful when you want to keep the encoder
+        weights fixed while training only the decoder part of the model.
+
+        Note:
+        The method assumes that the UNetModel's encoder layers are named with the prefix
+        'audionet_convlayer'. Any layers with this prefix will have their gradients turned off.
+
+        Returns:
+        None
+        """
         for name, param in self.named_parameters():
             if name.startswith('audionet_convlayer'):
                 param.requires_grad = False
