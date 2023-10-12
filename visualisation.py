@@ -23,7 +23,3 @@ def create_fig_training(checkpoint_path, plot_name=''):
     ax2.legend(loc="upper left")
     name = plot_name or os.path.splitext(os.path.basename(checkpoint_path))[0] + '.png'
     plt.savefig(name)
-
-
-if __name__ == '__main__':
-    create_fig_training('model.ckpt')
