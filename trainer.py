@@ -1,5 +1,7 @@
 import torch
 from torch import nn
+import datetime as dt
+import os
 
 
 class UNETTrainer:
@@ -28,7 +30,8 @@ class UNETTrainer:
         trained_model, train_losses, train_accs, val_losses, val_accs = trainer.train_model()
     """
 
-    def __init__(self, model: nn.Module, train_dataloader: torch.utils.data.DataLoader, val_dataloader: torch.utils.data.DataLoader):
+    def __init__(self, model: nn.Module, train_dataloader: torch.utils.data.DataLoader,
+                 val_dataloader: torch.utils.data.DataLoader):
         """
         Initializes the UNETTrainer object.
 
@@ -61,6 +64,12 @@ class UNETTrainer:
         self.model.to(device)
         train_losses, train_accs, val_losses, val_accs = [], [], [], []
 
+        # To save the model at each epoch
+        os.makedirs('training_model', exist_ok=True)
+        training_id = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
+        training_folder = f'training_model/{training_id}'
+        os.makedirs(training_folder, exist_ok=True)
+
         for epoch in range(1, num_epochs + 1):
             model, train_loss, train_acc = self._train_epoch(device, print_every=None)
             val_loss, val_acc = self.validate(device)
@@ -75,9 +84,16 @@ class UNETTrainer:
             train_accs.extend(train_acc)
             val_losses.append(val_loss)
             val_accs.append(val_acc)
+            torch.save({'model_state_dict': self.model.state_dict(),
+                        'train_losses': train_losses,
+                        'train_accs': train_accs,
+                        'val_losses': val_losses,
+                        'val_accs': val_accs,
+                        }, os.path.join(training_folder, f'epoch_{epoch}.ckpt'))
+
         return self.model, train_losses, train_accs, val_losses, val_accs
 
-    def _train_epoch(self,  device, print_every):
+    def _train_epoch(self, device, print_every):
         # Train:
         self.model.train()
         train_loss_batches, train_acc_batches = [], []
@@ -111,7 +127,7 @@ class UNETTrainer:
 
     def output_to_label(z: torch.tensor):
         """Create the binary mask of the prediction"""
-        return torch.where(z>0.5, 1, 0, dtype=torch.int)
+        return torch.where(z > 0.5, 1, 0, dtype=torch.int)
 
     def validate(self, device):
         val_loss_cum = 0
