@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import datetime as dt
 import os
+from metric import dice_coeff
 
 
 class UnetTrainer:
@@ -74,18 +75,17 @@ class UnetTrainer:
         for epoch in range(1, num_epochs + 1):
 
             # Train one epoch
-            improved_model, train_loss_batches = self._train_epoch(device, print_every=None)
+            improved_model, train_loss_batches, train_accs_batches = self._train_epoch(device, print_every=None)
 
             # Save model
             self.model = improved_model
-
+            train_loss_batches.append(sum(train_loss_batches)/len(train_loss_batches))
+            train_accs_batches.append(sum(train_accs_batches)/len(train_accs_batches))
             # Save losses
-            self.epoch_losses.append(sum(train_loss_batches)/len(train_loss_batches))
-            print(f'Epoch number {epoch} complete: Average loss: {self.epoch_losses[-1]}')
-
+            self.epoch_losses.append(train_loss_batches[-1])
+            print(f'Epoch number {epoch} complete: Average loss: {self.epoch_losses[-1]} Accuracy: {train_accs_batches[-1]}')
 
         return self.model, train_losses, train_accs, val_losses, val_accs
-
 
     def _train_epoch(self, device, print_every):
         
@@ -116,16 +116,21 @@ class UnetTrainer:
             loss.backward()
             self.optimizer.step()
 
+
+            hard_preds = self.output_to_label(mask_prediction)
+            acc_batch_avg = (hard_preds == outputs_mask).float().mean().item()
+            train_acc_batches.append(acc_batch_avg)
+
             # Append the loss in the list
             train_loss_batches.append(loss.item())
             print(f'Loss: {loss.item()}')
 
-        return self.model, train_loss_batches
+        return self.model, train_loss_batches, train_acc_batches
 
     def validate(self, device):
 
         val_loss_cum = 0
-        val_acc_cum = 0
+        val_acc_cum = []
         self.model.eval()
         with torch.no_grad():
             for batch_index, (x, y) in enumerate(self.val_dataloader, 1):
@@ -135,6 +140,10 @@ class UnetTrainer:
                 batch_loss = self.loss_function(z, labels.float())
                 val_loss_cum += batch_loss.item()
                 hard_preds = self.output_to_label(z)
-                acc_batch_avg = (hard_preds == labels).float().mean().item()
-                val_acc_cum += acc_batch_avg
-        return val_loss_cum / len(self.val_dataloader), val_acc_cum / len(self.val_dataloader)
+                acc_batch_avg = dice_coeff(hard_preds, labels)
+                val_acc_cum.append(acc_batch_avg)
+        return val_loss_cum / len(self.val_dataloader), sum(val_acc_cum) / len(self.val_dataloader)
+
+    @staticmethod
+    def output_to_label(pred: torch.tensor):
+        return torch.where(pred > 0.5, 1, 0)
