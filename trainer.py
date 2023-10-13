@@ -142,7 +142,7 @@ class UnetTrainer:
                 hard_preds = self.output_to_label(z)
                 acc_batch_avg = dice_coeff(hard_preds, labels)
                 val_acc_cum.append(acc_batch_avg)
-        return val_loss_cum / len(self.val_dataloader), sum(val_acc_cum) / len(self.val_dataloader)
+        return val_loss_cum / len(self.val_dataloader), sum(val_acc_cum) / len(val_acc_cum)
 
     @staticmethod
     def output_to_label(pred: torch.tensor):
