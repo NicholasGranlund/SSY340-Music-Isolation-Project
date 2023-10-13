@@ -2,8 +2,6 @@ import torch
 from torch import nn
 import datetime as dt
 import os
-from metric import dice_coeff
-
 
 class UnetTrainer:
     """
@@ -60,9 +58,10 @@ class UnetTrainer:
             list: List of validation accuracies for each epoch.
         """
         print("Starting training")
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"Training on device: {device}")
-        self.model.to(device)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Training on device: {self.device}")
+        self.model.to(self.device)
+
         train_losses, train_accs, val_losses, val_accs = [], [], [], []
 
         # To save the model at each epoch
@@ -75,75 +74,50 @@ class UnetTrainer:
         for epoch in range(1, num_epochs + 1):
 
             # Train one epoch
-            improved_model, train_loss_batches, train_accs_batches = self._train_epoch(device, print_every=None)
+            improved_model, train_loss_batches = self._train_epoch()
 
             # Save model
             self.model = improved_model
-            train_loss_batches.append(sum(train_loss_batches)/len(train_loss_batches))
-            train_accs_batches.append(sum(train_accs_batches)/len(train_accs_batches))
+
             # Save losses
-            self.epoch_losses.append(train_loss_batches[-1])
-            print(f'Epoch number {epoch} complete: Average loss: {self.epoch_losses[-1]} Accuracy: {train_accs_batches[-1]}')
+            self.epoch_losses.append(sum(train_loss_batches)/len(train_loss_batches))
 
-        return self.model, train_losses, train_accs, val_losses, val_accs
+            # Print
+            print(f'Epoch {epoch} done.     Mean MSELoss = {self.epoch_losses[-1]}')
 
-    def _train_epoch(self, device, print_every):
+        return self.model, self.epoch_losses
+
+
+    def _train_epoch(self):
         
         # Set the model in train mode
         self.model.train()
 
         # Initialize empy lists for losses
-        train_loss_batches, train_acc_batches = [], []
+        train_loss_batches = []
 
         # Get number of batches 
         num_batches = len(self.train_dataloader)
 
         # Iterate thought the batches
         for batch_index, (x, y) in enumerate(self.train_dataloader, 1):
-            print(f"\tBatch {batch_index}/{num_batches}: ")
 
             # Send tensors to device
-            inputs_spectrogram, outputs_mask = x.to(device), y.to(device)
+            inputs_spectrogram, outputs_mask = x.to(self.device), y.to(self.device)
             self.optimizer.zero_grad()
 
             # Forward prop, get mask prediction
             mask_prediction = self.model.forward(inputs_spectrogram)
  
             # Compute the loss
-            loss = self.loss_function(mask_prediction, outputs_mask)
+            loss = self.loss_function(mask_prediction*inputs_spectrogram, outputs_mask*inputs_spectrogram)
 
             # Back propagate
             loss.backward()
             self.optimizer.step()
 
-
-            hard_preds = self.output_to_label(mask_prediction)
-            acc_batch_avg = (hard_preds == outputs_mask).float().mean().item()
-            train_acc_batches.append(acc_batch_avg)
-
             # Append the loss in the list
             train_loss_batches.append(loss.item())
-            print(f'Loss: {loss.item()}')
+        
+        return self.model, train_loss_batches
 
-        return self.model, train_loss_batches, train_acc_batches
-
-    def validate(self, device):
-
-        val_loss_cum = 0
-        val_acc_cum = []
-        self.model.eval()
-        with torch.no_grad():
-            for batch_index, (x, y) in enumerate(self.val_dataloader, 1):
-                inputs, labels = x.to(device), y.to(device)
-                z = self.model.forward(inputs)
-
-                batch_loss = self.loss_function(z, labels.float())
-                val_loss_cum += batch_loss.item()
-                hard_preds = self.output_to_label(z)
-                acc_batch_avg = dice_coeff(hard_preds, labels)
-                val_acc_cum.append(acc_batch_avg)
-        return val_loss_cum / len(self.val_dataloader), sum(val_acc_cum) / len(val_acc_cum)
-
-    @staticmethod
-    def output_to_label(pred: torch.tensor):
-        return torch.where(pred > 0.5, 1, 0)
