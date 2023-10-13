@@ -8,8 +8,7 @@ class UnetModel(nn.Module):
 
     Args:
         ngf (int, optional): Number of generator filters. Default is 64.
-        input_nc (int, optional): Number of input channels. Default is 1.
-        output_nc (int, optional): Number of output channels. Default is 2.
+        nc (int, optional): Number of input and output channels. Default is 1 which coresponds to Mono sound.
     """
 
     def __init__(self, ngf=64, nc=1):
@@ -23,7 +22,7 @@ class UnetModel(nn.Module):
         """
         super(UnetModel, self).__init__()
 
-        # initialize layers
+        # Initialize encoder layers
         self.audionet_convlayer1 = self.unet_conv(nc, ngf)
         self.audionet_convlayer2 = self.unet_conv(ngf, ngf * 2)
         self.audionet_convlayer3 = self.unet_conv(ngf * 2, ngf * 4)
@@ -31,6 +30,8 @@ class UnetModel(nn.Module):
         self.audionet_convlayer5 = self.unet_conv(ngf * 8, ngf * 8)
         self.audionet_convlayer6 = self.unet_conv(ngf * 8, ngf * 8)
         self.audionet_convlayer7 = self.unet_conv(ngf * 8, ngf * 8)
+
+        # Initialize decoder layers
         self.upconvlayer1 = self.unet_upconv(ngf * 8, ngf * 8)
         self.upconvlayer2 = self.unet_upconv(ngf * 16, ngf * 8)
         self.upconvlayer3 = self.unet_upconv(ngf * 16, ngf * 8)
