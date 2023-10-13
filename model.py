@@ -37,7 +37,7 @@ class UnetModel(nn.Module):
         self.upconvlayer4 = self.unet_upconv(ngf * 16, ngf * 4)
         self.upconvlayer5 = self.unet_upconv(ngf * 8, ngf * 2)
         self.upconvlayer6 = self.unet_upconv(ngf * 4, ngf)
-        self.upconvlayer7 = self.unet_upconv(ngf * 2, nc, True, mode='regression')
+        self.upconvlayer7 = self.unet_upconv(ngf * 2, nc, True, mode='classification')
 
     def forward(self, x):
         """
@@ -100,12 +100,12 @@ class UnetModel(nn.Module):
         uprelu = nn.ReLU(True)
         upnorm = norm_layer(output_nc)
         if not outermost:
+            return nn.Sequential(*[upconv, upnorm, uprelu])
+        else:
             if mode == 'classification':
-                return nn.Sequential(*[upconv, upnorm, uprelu])
+                return nn.Sequential(*[upconv, nn.Sigmoid()])
             else:
                 return nn.Sequential(*[upconv, uprelu])
-        else:
-            return nn.Sequential(*[upconv, nn.Sigmoid()])
 
     def transfer_weights(self, weight_path, device):
         """
