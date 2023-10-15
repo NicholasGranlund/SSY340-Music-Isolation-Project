@@ -43,7 +43,8 @@ class UnetTrainer:
         self.val_dataloader = val_dataloader
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         self.loss_function = nn.MSELoss()
-        self.epoch_losses = []
+        self.train_losses = []
+        self.val_losses = []
 
 
     def train_model(self, num_epochs: int = 1):
@@ -62,14 +63,6 @@ class UnetTrainer:
         print(f"Training on device: {self.device}")
         self.model.to(self.device)
 
-        train_losses, train_accs, val_losses, val_accs = [], [], [], []
-
-        # To save the model at each epoch
-        os.makedirs('training_model', exist_ok=True)
-        training_id = dt.datetime.now().strftime('%Y_%m_%d_%H_%M')
-        training_folder = f'training_model/{training_id}'
-        os.makedirs(training_folder, exist_ok=True)
-
         # Iterate through the epochs
         for epoch in range(1, num_epochs + 1):
 
@@ -79,13 +72,17 @@ class UnetTrainer:
             # Save model
             self.model = improved_model
 
+            # Validate model
+            val_loss_batches = self._validate_epoch()
+
             # Save losses
-            self.epoch_losses.append(sum(train_loss_batches)/len(train_loss_batches))
+            self.train_losses.append(sum(train_loss_batches)/len(train_loss_batches))
+            self.val_losses.append(sum(val_loss_batches)/len(val_loss_batches))
 
             # Print
-            print(f'Epoch {epoch} done.     Mean MSELoss = {self.epoch_losses[-1]}')
+            print(f'Epoch {epoch} done:     Avg Train Loss = {self.train_losses[-1]}     Avg Val Loss = {self.val_losses[-1]}')
 
-        return self.model, self.epoch_losses
+        return self.model, self.train_losses, self.val_losses
 
 
     def _train_epoch(self):
@@ -101,6 +98,9 @@ class UnetTrainer:
 
         # Iterate thought the batches
         for batch_index, (x, y) in enumerate(self.train_dataloader, 1):
+
+            if batch_index % 10 == 0:
+                print(f'Batch {batch_index} / {num_batches}')
 
             # Send tensors to device
             inputs_spectrogram, outputs_mask = x.to(self.device), y.to(self.device)
@@ -120,4 +120,29 @@ class UnetTrainer:
             train_loss_batches.append(loss.item())
         
         return self.model, train_loss_batches
+    
+    def _validate_epoch(self):
 
+        # Set the model in validation mode
+        self.model.eval()
+
+        # Initialize empy lists for losses
+        val_loss_batches = []
+
+        with torch.no_grad():
+            # Iterate thought the batches
+            for batch_index, (x, y) in enumerate(self.val_dataloader, 1):
+
+                # Send tensors to device
+                inputs_spectrogram, outputs_mask = x.to(self.device), y.to(self.device)
+
+                # Forward prop, get mask prediction
+                mask_prediction = self.model.forward(inputs_spectrogram)
+    
+                # Compute the loss
+                loss = self.loss_function(mask_prediction*inputs_spectrogram, outputs_mask*inputs_spectrogram)
+
+                # Append the loss in the list
+                val_loss_batches.append(loss.item())
+
+        return val_loss_batches
