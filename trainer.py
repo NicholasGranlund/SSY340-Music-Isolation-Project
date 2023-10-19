@@ -1,6 +1,7 @@
 import torch
 from torch import nn
-
+import datetime as dt
+import os
 
 class UnetTrainer:
     """
@@ -45,6 +46,7 @@ class UnetTrainer:
         self.train_losses = []
         self.val_losses = []
 
+
     def train_model(self, num_epochs: int = 1):
         """
         Trains the UNet model using the specified training and validation dataloaders.
@@ -82,6 +84,7 @@ class UnetTrainer:
 
         return self.model, self.train_losses, self.val_losses
 
+
     def _train_epoch(self):
         
         # Set the model in train mode
@@ -105,10 +108,9 @@ class UnetTrainer:
 
             # Forward prop, get mask prediction
             mask_prediction = self.model.forward(inputs_spectrogram)
-            binary_mask = self.probability_to_label(mask_prediction)
-
+ 
             # Compute the loss
-            loss = self.loss_function(mask_prediction*binary_mask, outputs_mask*inputs_spectrogram)
+            loss = self.loss_function(mask_prediction*inputs_spectrogram, outputs_mask*inputs_spectrogram)
 
             # Back propagate
             loss.backward()
@@ -136,22 +138,11 @@ class UnetTrainer:
 
                 # Forward prop, get mask prediction
                 mask_prediction = self.model.forward(inputs_spectrogram)
-                binary_mask = self.probability_to_label(mask_prediction)
-
+    
                 # Compute the loss
-                loss = self.loss_function(mask_prediction*binary_mask, outputs_mask*inputs_spectrogram)
+                loss = self.loss_function(mask_prediction*inputs_spectrogram, outputs_mask*inputs_spectrogram)
 
                 # Append the loss in the list
                 val_loss_batches.append(loss.item())
 
         return val_loss_batches
-
-    @staticmethod
-    def probability_to_label(tensor: torch.Tensor):
-        """
-        :arg
-        tensor: (torch.Tensor) mask of probability
-        :return
-        (torch.Tensor) binary mask
-        """
-        return torch.where(tensor > 0.5, 1., 0.)
